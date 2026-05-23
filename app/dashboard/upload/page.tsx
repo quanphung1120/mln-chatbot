@@ -1,18 +1,13 @@
 "use client";
 
 import { upload } from "@vercel/blob/client";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { CheckCircle, FileText, Loader2, Upload, XCircle } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type Stage = "idle" | "uploading" | "processing" | "done" | "error";
-
-interface UploadResult {
-  documentId: string;
-  chunkCount: number;
-}
+type Stage = "idle" | "uploading" | "done" | "error";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -49,69 +44,6 @@ function validateFile(file: File): string | null {
     return `File is too large (${humanSize(file.size)}). Maximum is 10 MB.`;
   }
   return null;
-}
-
-// ---------------------------------------------------------------------------
-// Step indicator
-// ---------------------------------------------------------------------------
-const STEPS: { id: Stage; label: string }[] = [
-  { id: "uploading", label: "Uploading to storage" },
-  { id: "processing", label: "Chunking document" },
-  { id: "done", label: "Saved to database" },
-];
-
-function StepList({ stage }: { stage: Stage }) {
-  const order: Stage[] = ["uploading", "processing", "done"];
-  const currentIndex = order.indexOf(stage);
-
-  return (
-    <ol className="space-y-3 w-full max-w-sm">
-      {STEPS.map(({ id, label }, i) => {
-        const isPast = currentIndex > i;
-        const isActive = currentIndex === i;
-        const isError = stage === "error" && isActive;
-
-        return (
-          <li key={id} className="flex items-center gap-3">
-            <span
-              className={[
-                "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors",
-                isPast
-                  ? "bg-emerald-500 text-white"
-                  : isActive && !isError
-                  ? "bg-primary text-primary-foreground"
-                  : isError
-                  ? "bg-destructive text-destructive-foreground"
-                  : "bg-muted text-muted-foreground",
-              ].join(" ")}
-            >
-              {isPast ? (
-                <CheckCircle className="size-4" />
-              ) : isActive && !isError ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : isError ? (
-                <XCircle className="size-4" />
-              ) : (
-                i + 1
-              )}
-            </span>
-            <span
-              className={[
-                "text-sm transition-colors",
-                isPast
-                  ? "text-emerald-600 dark:text-emerald-400 font-medium"
-                  : isActive && !isError
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground",
-              ].join(" ")}
-            >
-              {label}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -200,14 +132,23 @@ export default function UploadPage() {
   const [stage, setStage] = useState<Stage>("idle");
   const [progress, setProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [result, setResult] = useState<UploadResult | null>(null);
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Transition to "done" as soon as progress reaches 1 (100%).
+  // This is reactive and decoupled from the upload() promise resolution.
+  useEffect(() => {
+    if (progress === 1 && stage === "uploading") {
+      setUploadedFilename(selectedFile?.name ?? null);
+      setStage("done");
+    }
+  }, [progress, stage, selectedFile]);
 
   const reset = () => {
     setStage("idle");
     setProgress(0);
     setSelectedFile(null);
-    setResult(null);
+    setUploadedFilename(null);
     setErrorMsg(null);
   };
 
@@ -222,70 +163,24 @@ export default function UploadPage() {
 
     setSelectedFile(file);
     setErrorMsg(null);
-    setResult(null);
+    setUploadedFilename(null);
 
     try {
-      // ── Step 1: upload to Vercel Blob ──────────────────────────────────
+      // Upload directly to Vercel Blob.
+      // onUploadCompleted on the server will handle chunking and DB persistence
+      // asynchronously after Vercel confirms the upload.
       setStage("uploading");
       setProgress(0);
 
-      const blob = await upload(file.name, file, {
+      await upload(file.name, file, {
         access: "public",
         handleUploadUrl: "/api/upload/token",
         onUploadProgress: ({ percentage }) => {
-          setProgress(Math.round(percentage));
+          // Store as 0–1 decimal; the useEffect above will fire when it hits 1.
+          setProgress(percentage / 100);
         },
       });
-
-      // ── Step 2: Poll ingestion status from API ──────────────────────────
-      setStage("processing");
-
-      const pollIntervalMs = 1000;
-      const maxAttempts = 30;
-      let attempts = 0;
-      let ingestData: UploadResult | null = null;
-
-      while (attempts < maxAttempts) {
-        attempts++;
-        const pollRes = await fetch(
-          `/api/documents?blobUrl=${encodeURIComponent(blob.url)}`
-        );
-
-        if (!pollRes.ok) {
-          const data = await pollRes.json().catch(() => ({}));
-          throw new Error(
-            (data as { error?: string }).error ?? "Ingestion status check failed."
-          );
-        }
-
-        const data = (await pollRes.json()) as {
-          status: "pending" | "completed";
-          documentId?: string;
-          chunkCount?: number;
-          error?: string;
-        };
-
-        if (data.status === "completed") {
-          ingestData = {
-            documentId: data.documentId!,
-            chunkCount: data.chunkCount!,
-          };
-          break;
-        }
-
-        // Wait before next check
-        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-      }
-
-      if (!ingestData) {
-        throw new Error("Ingestion processing timed out. Please try again or contact support.");
-      }
-
-      // ── Step 3: done ───────────────────────────────────────────────────
-      setStage("done");
-      setResult(ingestData);
     } catch (err) {
-      // Log technical detail for developers, show generic message to user
       console.error("[upload page] workflow error:", err);
       setErrorMsg(
         err instanceof Error ? err.message : "An unexpected error occurred."
@@ -327,8 +222,8 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* In-progress steps */}
-        {(stage === "uploading" || stage === "processing") && (
+        {/* In-progress */}
+        {stage === "uploading" && (
           <div className="space-y-6">
             {/* File info */}
             {selectedFile && (
@@ -345,45 +240,42 @@ export default function UploadPage() {
               </div>
             )}
 
-            {/* Progress bar (only during blob upload) */}
-            {stage === "uploading" && (
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Uploading…</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full bg-primary transition-all duration-200 rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
+            {/* Progress bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 className="size-3 animate-spin" />
+                  Uploading…
+                </span>
+                <span>{Math.round(progress * 100)}%</span>
               </div>
-            )}
-
-            <StepList stage={stage} />
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full bg-primary transition-all duration-200 rounded-full"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+            </div>
           </div>
         )}
 
         {/* Success state */}
-        {stage === "done" && result && (
+        {stage === "done" && (
           <div className="space-y-6">
             <div className="flex flex-col items-center gap-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-8 text-center">
               <CheckCircle className="size-12 text-emerald-500" />
               <div className="space-y-1">
                 <p className="font-semibold text-foreground text-lg">
-                  Document ingested successfully!
+                  Document uploaded successfully!
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Stored{" "}
-                  <span className="font-semibold text-foreground">
-                    {result.chunkCount}
-                  </span>{" "}
-                  sentence chunks in the database.
-                </p>
-                <p className="text-xs text-muted-foreground font-mono mt-1 break-all">
-                  ID: {result.documentId}
-                </p>
+                {uploadedFilename && (
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      {uploadedFilename}
+                    </span>{" "}
+                    has been received and is being processed in the background.
+                  </p>
+                )}
               </div>
             </div>
 
