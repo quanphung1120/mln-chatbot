@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton, useUser, Show } from "@clerk/nextjs";
-import { Plus, BookOpen, GalleryVerticalEnd } from "lucide-react";
+import { Plus, BookOpen, GalleryVerticalEnd, UploadCloud } from "lucide-react";
+import Link from "next/link";
 
 // ---------------------------------------------------------------------------
 // Mock recent threads
@@ -126,6 +127,27 @@ export function DashboardSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Tools */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            Tools
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/dashboard/upload" />}
+                  tooltip="Upload a reference document"
+                  className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                >
+                  <UploadCloud className="size-4 shrink-0" />
+                  <span className="truncate">Upload Document</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
