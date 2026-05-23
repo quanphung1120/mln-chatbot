@@ -4,6 +4,7 @@ import path from "path";
 import dbConnect from "@/lib/mongoose";
 import DocumentModel from "@/lib/models/Document";
 import ChunkModel from "@/lib/models/Chunk";
+import { auth } from "@clerk/nextjs/server";
 
 // ---------------------------------------------------------------------------
 // Allow-listed MIME types for upload
@@ -40,8 +41,10 @@ function splitIntoSentences(text: string): string[] {
 // through this server.
 // ---------------------------------------------------------------------------
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // TODO(security): Add Clerk authentication check here once auth is wired up.
-  // Example: const { userId } = await auth(); if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const body = (await request.json()) as HandleUploadBody;
 

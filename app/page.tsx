@@ -113,7 +113,7 @@ export default function Home() {
         {/* CTA Buttons in Stark Monochrome style */}
         <div className="relative z-10 flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
           <Show when="signed-in">
-            <a href="#syllabus-section" className="w-full sm:w-auto">
+            <a href="/dashboard" className="w-full sm:w-auto">
               <button className="w-full sm:w-auto text-xs tracking-widest uppercase bg-foreground text-background px-8 h-12 hover:bg-background hover:text-foreground hover:border-2 hover:border-foreground transition-colors duration-100 cursor-pointer focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-3">
                 Start Interactive Search →
               </button>
@@ -490,7 +490,7 @@ export default function Home() {
 
           <div className="mt-4 w-full flex justify-center">
             <Show when="signed-in">
-              <a href="#syllabus-section" className="w-full sm:w-auto">
+              <a href="/dashboard" className="w-full sm:w-auto">
                 <button className="w-full sm:w-auto text-xs tracking-widest uppercase bg-background text-foreground px-8 h-12 hover:bg-transparent hover:text-background hover:border-2 hover:border-background transition-colors duration-100 cursor-pointer focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-3">
                   Start Reference Search →
                 </button>
