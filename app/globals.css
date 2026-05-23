@@ -123,6 +123,11 @@
   }
 }
 
+/* ── Monopo Saigon design tokens (scoped to landing page) ── */
+.bg-deep-ocean {
+  background: linear-gradient(90deg, rgb(160, 224, 171), rgb(255, 172, 46) 50%, rgb(165, 45, 37));
+}
+
 /* Custom background textures & pattern utilities to prevent flat design */
 .bg-pattern-lines {
   background-image: repeating-linear-gradient(0deg,
