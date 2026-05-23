@@ -5,6 +5,7 @@ import dbConnect from "@/lib/mongoose";
 import DocumentModel from "@/lib/models/Document";
 import ChunkModel from "@/lib/models/Chunk";
 import { auth } from "@clerk/nextjs/server";
+import { notFound } from "next/navigation";
 
 // ---------------------------------------------------------------------------
 // Allow-listed MIME types for upload
@@ -41,29 +42,19 @@ function splitIntoSentences(text: string): string[] {
 // through this server.
 // ---------------------------------------------------------------------------
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const body = (await request.json()) as HandleUploadBody;
-
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
-      // Token is read from BLOB_READ_WRITE_TOKEN env var automatically by the SDK
       onBeforeGenerateToken: async (pathname) => {
-        // Enforce basename-only — strip any directory traversal components
         const safeName = path.basename(pathname);
-
+        const { userId } = await auth();
+        if (!userId) notFound();
         return {
-          // Allow-list content types
           allowedContentTypes: Array.from(ALLOWED_CONTENT_TYPES),
-          // Enforce max size at the token level
-          maximumSizeInBytes: MAX_SIZE_BYTES,
-          // Use safe basename in the token
-          pathname: safeName,
+          addRandomSuffix: true,
+          pathname: `${userId}/${safeName}`,
           tokenPayload: JSON.stringify({ originalPathname: safeName }),
         };
       },

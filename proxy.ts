@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 // 1. Define matching rules for protected routes
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/admin(.*)', '/api/upload(.*)'])
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/admin(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
     // 2. Step in if the route matches our list
