@@ -12,104 +12,19 @@ import {
 } from "@assistant-ui/react";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
-  Search,
-  Telescope,
-  Sparkles,
-  ChevronDown,
-  Check,
   ArrowUp,
   Square,
   Mic,
-  Paperclip,
   Copy,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
   ArrowDown,
   BookOpen,
+  Check,
 } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Search mode picker
-// ---------------------------------------------------------------------------
-
-const SEARCH_MODES = [
-  {
-    id: "search",
-    name: "Search",
-    description: "Fast answers to everyday questions",
-    Icon: Search,
-  },
-  {
-    id: "research",
-    name: "Research",
-    description: "In-depth reports on complex topics",
-    Icon: Telescope,
-  },
-  {
-    id: "labs",
-    name: "Labs",
-    description: "Apps, slides, and dashboards",
-    Icon: Sparkles,
-  },
-] as const;
-
-type SearchModeId = (typeof SEARCH_MODES)[number]["id"];
-
-const SearchModePicker: FC = () => {
-  const [mode, setMode] = useState<SearchModeId>("search");
-  const current = SEARCH_MODES.find((m) => m.id === mode)!;
-  const CurrentIcon = current.Icon;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        id="search-mode-trigger"
-        className="flex items-center gap-1.5 rounded-full border border-foreground/15 bg-foreground/5 px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <CurrentIcon className="size-3.5" />
-        <span>{current.name}</span>
-        <ChevronDown className="size-3 opacity-60" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="start" sideOffset={8}>
-        {SEARCH_MODES.map((m) => {
-          const Icon = m.Icon;
-          const isActive = m.id === mode;
-          return (
-            <DropdownMenuItem
-              key={m.id}
-              id={`search-mode-${m.id}`}
-              onClick={() => setMode(m.id)}
-              className="flex items-start gap-3 py-2.5"
-            >
-              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center">
-                {isActive ? (
-                  <Check className="size-3.5 text-foreground" />
-                ) : (
-                  <Icon className="size-3.5 text-muted-foreground" />
-                )}
-              </span>
-              <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">{m.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {m.description}
-                </span>
-              </span>
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
 
 // ---------------------------------------------------------------------------
 // Composer primary action (send / cancel / dictate)
@@ -197,19 +112,7 @@ const Composer: FC<ComposerProps> = ({
       className="w-full resize-none bg-transparent px-4 pt-4 pb-2 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60"
       aria-label="Message input"
     />
-    <div className="flex items-center justify-between px-3 pb-3">
-      {/* Left: attachment + mode picker */}
-      <div className="flex items-center gap-2">
-        <ComposerPrimitive.AddAttachment
-          id="composer-attach-btn"
-          className="flex size-7 items-center justify-center rounded-full text-muted-foreground/70 transition-colors hover:bg-foreground/8 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Add attachment"
-        >
-          <Paperclip className="size-3.5" />
-        </ComposerPrimitive.AddAttachment>
-        <SearchModePicker />
-      </div>
-
+    <div className="flex items-center justify-end px-3 pb-3">
       {/* Right: send/cancel */}
       <ComposerPrimaryAction />
     </div>

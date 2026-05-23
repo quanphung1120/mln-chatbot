@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import dbConnect from "@/lib/mongoose";
 import SessionModel from "@/lib/models/Session";
-import { ChatClient } from "./chat-client";
+import { ChatClientWrapper } from "./chat-client-wrapper";
 
 interface PageProps {
   params: Promise<{ sessionId: string }>;
@@ -22,31 +22,23 @@ export default async function ChatSessionPage({ params }: PageProps) {
     // Establish database connection on the server
     await dbConnect();
 
-    const session = await SessionModel.findById(sessionId);
+    const session = await SessionModel.findById(sessionId).lean();
     if (!session) {
       redirect("/dashboard");
     }
 
     if (session.userId && session.userId !== userId) {
-      notFound()
+      notFound();
     }
 
     // Map messages to plain serializable objects for client invocation
-    const initialMessages = session.messages.map((m) => {
-      const doc = m as unknown as { toObject?: () => Record<string, unknown> };
-      const msgObj = doc.toObject ? doc.toObject() : { ...m };
-      if ('_id' in msgObj) delete msgObj._id;
-      if ('__v' in msgObj) delete msgObj.__v;
-      return {
-        ...msgObj,
-        createdAt: msgObj.createdAt ? new Date(msgObj.createdAt as string | Date).toISOString() : undefined,
-      };
-    });
-
-    console.log("Messages: " + JSON.stringify(initialMessages))
+    const initialMessages = session.messages.map((message: any) => ({
+      ...message,
+      createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : undefined,
+    }));
 
     return (
-      <ChatClient
+      <ChatClientWrapper
         sessionId={sessionId}
         initialMessages={initialMessages}
       />

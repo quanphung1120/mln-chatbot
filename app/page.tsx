@@ -1,28 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
 import Image from "next/image";
 import {
-  Sparkles,
-  BookOpen,
-  Award,
-  CheckCircle2,
   ArrowRight,
-  ChevronRight,
-  GraduationCap,
-  Check,
   Search,
   BookMarked,
   Layers,
-  RefreshCw,
-  CheckCircle,
-  HelpCircle,
-  XCircle,
-  Info
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";

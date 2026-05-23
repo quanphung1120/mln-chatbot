@@ -1,31 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
 import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { PerplexityThread } from "@/components/assistant-ui/perplexity-thread";
+import { DefaultChatTransport } from "ai";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const router = useRouter();
+  const pendingSessionId = useRef<string | null>(null);
 
   const runtime = useChatRuntime({
-    api: "/api/chat",
-    body: {
-      sessionId: sessionId,
-    },
-    onResponse: (res: Response) => {
-      const newSessionId = res.headers.get("X-Session-Id");
-      if (newSessionId && !sessionId) {
-        setSessionId(newSessionId);
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      fetch: async (input, init) => {
+        const res = await fetch(input, init);
 
-        // Instantly update the address bar without unmounting or flickering the tree
-        window.history.replaceState(null, "", `/dashboard/chat/${newSessionId}`);
+        const newSessionId = res.headers.get("X-Session-Id");
+        if (newSessionId) {
+          pendingSessionId.current = newSessionId;
+        }
 
-        // Notify the sidebar to fetch updated chat history
+        return res;
+      },
+    }),
+    onFinish: () => {
+      const id = pendingSessionId.current;
+      if (id) {
+        pendingSessionId.current = null;
         window.dispatchEvent(new Event("chat-sessions-changed"));
+        router.push(`/dashboard/chat/${id}`);
       }
     },
-  } as any);
+  });
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>

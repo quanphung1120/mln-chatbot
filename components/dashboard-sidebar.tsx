@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,35 +12,32 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuAction,
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton, useUser, Show } from "@clerk/nextjs";
-import { Plus, GalleryVerticalEnd, UploadCloud } from "lucide-react";
+import { Plus, GalleryVerticalEnd, UploadCloud, Trash2, MoreHorizontal, Pencil } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+import { deleteSessionAction, renameSessionAction } from "@/lib/actions/session";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-// ---------------------------------------------------------------------------
-// Pinned / featured subjects
-// ---------------------------------------------------------------------------
-const PINNED_SUBJECTS = [
-  {
-    id: "mln111",
-    label: "MLN111 – Philosophy",
-    icon: "🧠",
-    href: "/dashboard",
-  },
-  {
-    id: "mln122",
-    label: "MLN122 – Political Economics",
-    icon: "📊",
-    href: "/dashboard",
-  },
-  {
-    id: "mln131",
-    label: "MLN131 – Scientific Socialism",
-    icon: "🌐",
-    href: "/dashboard",
-  },
-];
 
 export interface DashboardSidebarProps {
   sessions: { id: string; title: string }[];
@@ -50,6 +48,11 @@ export interface DashboardSidebarProps {
 // ---------------------------------------------------------------------------
 export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
   const { isLoaded, isSignedIn } = useUser();
+  const params = useParams();
+  const currentSessionId = params?.sessionId as string | undefined;
+
+  const [renameSession, setRenameSession] = useState<{ id: string; title: string } | null>(null);
+  const [deleteSession, setDeleteSession] = useState<{ id: string; title: string } | null>(null);
 
   return (
     <Sidebar collapsible="offcanvas">
@@ -90,30 +93,6 @@ export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Pinned subjects */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-            MLN Subjects
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {PINNED_SUBJECTS.map((subject) => (
-                <SidebarMenuItem key={subject.id}>
-                  <SidebarMenuButton
-                    render={<Link href={subject.href} />}
-                    tooltip={subject.label}
-                    className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  >
-                    <span className="text-base leading-none shrink-0">
-                      {subject.icon}
-                    </span>
-                    <span className="truncate">{subject.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
         {/* Recents */}
         <SidebarGroup>
@@ -138,6 +117,35 @@ export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
                         {thread.title}
                       </span>
                     </SidebarMenuButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <SidebarMenuAction
+                            showOnHover
+                            className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
+                            title="Session options"
+                          >
+                            <MoreHorizontal className="size-3.5" />
+                          </SidebarMenuAction>
+                        }
+                      />
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={() => setRenameSession(thread)}
+                          className="gap-2 text-xs cursor-pointer"
+                        >
+                          <Pencil className="size-3.5" />
+                          <span>Rename</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeleteSession(thread)}
+                          className="gap-2 text-xs cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                        >
+                          <Trash2 className="size-3.5 text-destructive" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </SidebarMenuItem>
                 ))
               )}
@@ -159,7 +167,7 @@ export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
                   className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 >
                   <UploadCloud className="size-4 shrink-0" />
-                  <span className="truncate">Upload Document</span>
+                  <span className="truncate">Documentation</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -199,6 +207,78 @@ export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
           </div>
         </div>
       </SidebarFooter>
+
+      {/* Rename Dialog */}
+      <Dialog
+        open={!!renameSession}
+        onOpenChange={(open) => !open && setRenameSession(null)}
+      >
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Rename Chat Session</DialogTitle>
+            <DialogDescription>
+              Enter a new title for this chat session.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            action={async (formData) => {
+              await renameSessionAction(formData);
+              setRenameSession(null);
+            }}
+            className="space-y-4"
+          >
+            <input type="hidden" name="sessionId" value={renameSession?.id || ""} />
+            <Input
+              key={renameSession?.id}
+              name="title"
+              defaultValue={renameSession?.title || ""}
+              placeholder="Session title"
+              required
+              autoFocus
+              className="rounded-xl"
+            />
+            <DialogFooter className="flex justify-end gap-2 pt-2">
+              <DialogClose render={<Button variant="outline" className="rounded-xl">Cancel</Button>} />
+              <Button type="submit" className="rounded-xl">
+                Save
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog
+        open={!!deleteSession}
+        onOpenChange={(open) => !open && setDeleteSession(null)}
+      >
+        <DialogContent className="max-w-sm rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Delete Chat Session</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong className="text-foreground">"{deleteSession?.title}"</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            action={async (formData) => {
+              await deleteSessionAction(formData);
+              setDeleteSession(null);
+            }}
+            className="flex justify-end gap-2 pt-4"
+          >
+            <input type="hidden" name="sessionId" value={deleteSession?.id || ""} />
+            <input
+              type="hidden"
+              name="currentSessionId"
+              value={currentSessionId || ""}
+            />
+            <DialogClose render={<Button variant="outline" className="rounded-xl">Cancel</Button>} />
+            <Button type="submit" variant="destructive" className="rounded-xl">
+              Delete
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   );
 }
