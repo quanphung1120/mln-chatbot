@@ -5,6 +5,7 @@ import dbConnect from "@/lib/mongoose";
 import DocumentModel from "@/lib/models/Document";
 import ChunkModel from "@/lib/models/Chunk";
 import { auth } from "@clerk/nextjs/server";
+import { generateEmbeddings } from "@/lib/embeddings";
 import { notFound } from "next/navigation";
 
 // ---------------------------------------------------------------------------
@@ -111,11 +112,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             chunkCount: sentences.length,
           });
 
+          // Generate embeddings in batch for all split sentences
+          let embeddings: number[][] = [];
+          try {
+            console.info(`[upload/token] Generating embeddings for ${sentences.length} sentences...`);
+            embeddings = await generateEmbeddings(sentences);
+          } catch (embedErr) {
+            console.error("[upload/token] Ingestion failed during embedding generation:", embedErr);
+            throw embedErr;
+          }
+
           // 2. Bulk-insert Chunk documents
           const chunkDocs = sentences.map((text, index) => ({
             documentId: doc._id,
             index,
             text: text.slice(0, 5000), // Truncate to schema limit
+            embedding: embeddings[index] || [],
           }));
 
           await ChunkModel.insertMany(chunkDocs, { ordered: false });

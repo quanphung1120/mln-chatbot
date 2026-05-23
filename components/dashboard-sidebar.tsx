@@ -14,24 +14,8 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton, useUser, Show } from "@clerk/nextjs";
-import { Plus, BookOpen, GalleryVerticalEnd, UploadCloud } from "lucide-react";
+import { Plus, GalleryVerticalEnd, UploadCloud } from "lucide-react";
 import Link from "next/link";
-
-// ---------------------------------------------------------------------------
-// Mock recent threads
-// ---------------------------------------------------------------------------
-const RECENT_THREADS = [
-  { id: "1", title: "Definition of Matter & Origin of Consciousness" },
-  { id: "2", title: "2 Principles & 3 Laws of Dialectics" },
-  { id: "3", title: "Theory of Surplus Value (M - C - M')" },
-  { id: "4", title: "Historical Mission of the Working Class" },
-  { id: "5", title: "6 Pairs of Basic Dialectical Categories" },
-  { id: "6", title: "Socio-Economic Formations & Historical Materialism" },
-  { id: "7", title: "Capital Accumulation & Monopolistic Competition" },
-  { id: "8", title: "National, Religious & Family Issues" },
-  { id: "9", title: "Transition Period & Socialist Formations" },
-  { id: "10", title: "Commodities, Currency & Market Laws" },
-];
 
 // ---------------------------------------------------------------------------
 // Pinned / featured subjects
@@ -41,40 +25,46 @@ const PINNED_SUBJECTS = [
     id: "mln111",
     label: "MLN111 – Philosophy",
     icon: "🧠",
-    href: "#",
+    href: "/dashboard",
   },
   {
     id: "mln122",
     label: "MLN122 – Political Economics",
     icon: "📊",
-    href: "#",
+    href: "/dashboard",
   },
   {
     id: "mln131",
     label: "MLN131 – Scientific Socialism",
     icon: "🌐",
-    href: "#",
+    href: "/dashboard",
   },
 ];
+
+export interface DashboardSidebarProps {
+  sessions: { id: string; title: string }[];
+}
 
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
-export function DashboardSidebar() {
+export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
+  const { isLoaded, isSignedIn } = useUser();
+
   return (
     <Sidebar collapsible="offcanvas">
       {/* ── Header ─────────────────────────────────────── */}
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<a href="#">
+            <SidebarMenuButton size="lg" render={<Link href="/dashboard">
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <GalleryVerticalEnd className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-medium">MLN Assistant</span>
+                <span className="font-semibold text-sm">MLN Assistant</span>
               </div>
-            </a>}>
+            </Link>}>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -82,6 +72,24 @@ export function DashboardSidebar() {
 
       {/* ── Content ─────────────────────────────────────── */}
       <SidebarContent className="px-1">
+        {/* New Chat Action Button */}
+        <SidebarGroup className="pt-2">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/dashboard" />}
+                  tooltip="Start a fresh chat thread"
+                  className="gap-3 rounded-xl px-3 py-2 text-sm bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary-hover font-semibold border border-primary/15 transition-all shadow-xs"
+                >
+                  <Plus className="size-4 shrink-0 text-primary" />
+                  <span className="truncate">New Chat</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Pinned subjects */}
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
@@ -92,7 +100,7 @@ export function DashboardSidebar() {
               {PINNED_SUBJECTS.map((subject) => (
                 <SidebarMenuItem key={subject.id}>
                   <SidebarMenuButton
-                    render={<a href={subject.href} />}
+                    render={<Link href={subject.href} />}
                     tooltip={subject.label}
                     className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                   >
@@ -114,19 +122,25 @@ export function DashboardSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {RECENT_THREADS.map((thread) => (
-                <SidebarMenuItem key={thread.id}>
-                  <SidebarMenuButton
-                    render={<a href="#" />}
-                    tooltip={thread.title}
-                    className="rounded-xl px-3 py-1.5 hover:bg-sidebar-accent"
-                  >
-                    <span className="truncate text-[13px] text-sidebar-foreground/70 hover:text-sidebar-foreground">
-                      {thread.title}
-                    </span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {sessions.length === 0 ? (
+                <div className="px-3 py-2 text-xs text-muted-foreground/50 italic">
+                  No chat history yet
+                </div>
+              ) : (
+                sessions.map((thread) => (
+                  <SidebarMenuItem key={thread.id}>
+                    <SidebarMenuButton
+                      render={<Link href={`/dashboard/chat/${thread.id}`} />}
+                      tooltip={thread.title}
+                      className="rounded-xl px-3 py-1.5 hover:bg-sidebar-accent"
+                    >
+                      <span className="truncate text-[13px] text-sidebar-foreground/70 hover:text-sidebar-foreground">
+                        {thread.title}
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

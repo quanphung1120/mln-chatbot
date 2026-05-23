@@ -7,6 +7,7 @@ export interface IChunk extends Document {
   documentId: mongoose.Types.ObjectId; // ref → Document
   index: number;                        // sentence position (0-based)
   text: string;                         // the sentence text
+  embedding?: number[];                 // vector embedding
   createdAt: Date;
 }
 
@@ -30,6 +31,10 @@ const ChunkSchema = new Schema<IChunk>(
       type: String,
       required: true,
       maxlength: 5000,
+    },
+    embedding: {
+      type: [Number],
+      required: false,
     },
     createdAt: {
       type: Date,
