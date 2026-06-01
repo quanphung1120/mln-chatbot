@@ -1,0 +1,57 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [vector]
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+model ChatSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?
+  title     String   @db.VarChar(255)
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+  @@map("chat_sessions")
+}
+
+model Document {
+  id         String   @id @default(uuid()) @db.Uuid
+  filename   String   @db.VarChar(255)
+  blobUrl    String
+  mimeType   String   @db.VarChar(120)
+  sizeBytes  Int
+  chunkCount Int      @default(0)
+  uploadedAt DateTime @default(now())
+  chunks     Chunk[]
+
+  @@index([uploadedAt])
+  @@map("documents")
+}
+
+model Chunk {
+  id         String                      @id @default(uuid()) @db.Uuid
+  documentId String                      @db.Uuid
+  index      Int
+  text       String
+  embedding  Unsupported("vector(1536)")
+  createdAt  DateTime                    @default(now())
+  document   Document                    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, index])
+  @@index([documentId])
+  @@map("chunks")
+}
