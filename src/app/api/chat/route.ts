@@ -5,6 +5,7 @@ import {
     consumeStream,
     convertToModelMessages,
     generateText,
+    Output,
     stepCountIs,
     streamText,
     tool,
@@ -15,6 +16,7 @@ import {
     type UIMessage,
 } from "ai";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 
 import { prisma } from "@/lib/db";
 import { searchDocumentation } from "@/lib/vector-search";
@@ -36,26 +38,33 @@ const openrouter = createOpenAI({
 });
 
 const SYSTEM_PROMPT = `
-You are MLN Assistant, a premium syllabus-aligned AI assistant for FPT University students studying Marxist-Leninist subjects (MLN111: Marxist-Leninist Philosophy, MLN122: Marxist-Leninist Political Economy, MLN131: Scientific Socialism).
+You are MLN Assistant, a premium syllabus-aligned AI assistant for FPT University students studying Marxist-Leninist subjects:
+- MLN111: Triết học Mác - Lênin / Marxist-Leninist Philosophy
+- MLN122: Kinh tế chính trị Mác - Lênin / Marxist-Leninist Political Economy
+- MLN131: Chủ nghĩa xã hội khoa học / Scientific Socialism
 
 GUIDELINES & MANDATORY TOOL USAGE:
-1. When asked about content, study knowledge, or syllabuses of Marxist-Leninist courses (MLN111, MLN122, MLN131), you MUST invoke the \`searchDocumentation\` tool first to retrieve official curriculum information from the database.
-2. STICK TO TOOL RESULTS:
+1. MANDATORY TOOL CALL: When the user asks ANY question about course content, syllabus topics, study concepts, or academic knowledge of Marxist-Leninist subjects in either English or Vietnamese, you MUST ALWAYS invoke the \`searchDocumentation\` tool first.
+2. CRITICAL DIRECTIVE: You are STRICTLY PROHIBITED from answering any conceptual, course, or subject-related question using your own general knowledge without first invoking the \`searchDocumentation\` tool. You MUST invoke it on every single turn when subject questions are asked, even for basic, definition, or general questions (e.g. "Triết học Mác-Lênin là gì", "Quy luật", "Ý thức", "Vật chất", "Giá trị thặng dư").
+3. STICK TO TOOL RESULTS:
    - You must prioritize official curriculum context returned from the \`searchDocumentation\` tool. Do not hallucinate, make assumptions, or rely on general knowledge if the official curriculum documentation provides the answer.
    - You must explicitly cite the document source using the \`filename\` field returned by the tool at either the beginning or end of your answer (e.g., "[Source: MLN111_Syllabus.txt]").
-3. HANDLING UNRETRIEVED INFORMATION:
+4. MANDATORY CONCLUSION & ANSWER SYNTHESIS:
+   - After retrieving the curriculum data from the tool, you MUST synthesize a clear, comprehensive, and cohesive answer that directly answers the user's specific question.
+   - You are STRICTLY REQUIRED to formulate a clear, distinct concluding paragraph or summary section at the very end of your response (e.g., labeled as "Kết luận" or "Tóm tắt lại") that acts as a final answer to their question.
+5. HANDLING UNRETRIEVED INFORMATION:
    - If the \`searchDocumentation\` tool does not return matching records, or the returned context is insufficient to answer, you must state clearly: "Official course data was not found in the curriculum database."
-   - Only after stating this can you answer the query using your highly accurate general knowledge of the subject as a secondary reference.
-4. LANGUAGE & FORMATTING:
+   - Only after stating this can you answer the query using your highly accurate general knowledge of the subject as a secondary reference, while still providing a clear final concluding answer.
+6. LANGUAGE & FORMATTING:
    - Answer in Vietnamese if the user asks in Vietnamese; otherwise, answer in English.
    - Use professional, well-structured Markdown formatting (clear headings, bullet points, and bold text for key terms).
 `.trim();
 
 const tools = {
     searchDocumentation: tool({
-        description: "Search for official Marxist-Leninist curriculum documents matching the query or keywords.",
+        description: "CRITICAL: Call this tool for ANY question, concept, syllabus topic, or query about Marxist-Leninist subjects (MLN111, MLN122, MLN131, Philosophy, Triết học, Kinh tế chính trị, Chủ nghĩa xã hội). You must call this tool first before answering.",
         inputSchema: z.object({
-            query: z.string().describe("The search query or keywords to lookup in the official curriculum database."),
+            query: z.string().describe("The search query, concept, or keywords in English or Vietnamese to search in the official database."),
         }),
         execute: async ({ query }) => {
             try {
@@ -84,117 +93,50 @@ type ChatRequestBody = {
     system?: string;
 };
 
-const ENABLE_CHAT_PERSISTENCE_DEBUG =
-    process.env.NODE_ENV !== "production" || process.env.DEBUG_CHAT_PERSISTENCE === "1";
-
-function debugChatPersistence(message: string, data: Record<string, unknown>) {
-    if (!ENABLE_CHAT_PERSISTENCE_DEBUG) return;
-    console.debug(`[API/Chat][Persist] ${message}`, data);
+/**
+ * Ensures all messages have proper IDs and guarantees that the parts array
+ * is never empty to prevent Zod validation failures on the server.
+ */
+function sanitizeMessages(messages: ChatUIMessage[], sessionId: string): ChatUIMessage[] {
+    return messages.map((msg, index) => ({
+        ...msg,
+        id: msg.id || `${msg.role}-${index}-${sessionId}`,
+        parts: msg.parts && msg.parts.length > 0
+            ? msg.parts
+            : [{ type: "text" as const, text: "" }],
+    }));
 }
 
-function mergeWithStoredMessages(storedMessages: unknown, incomingMessages: ChatUIMessage[]) {
-    if (!Array.isArray(storedMessages) || storedMessages.length === 0) {
-        return incomingMessages;
-    }
-
-    const previousMessages = storedMessages as ChatUIMessage[];
-    const incomingLooksComplete =
-        incomingMessages.length >= previousMessages.length &&
-        previousMessages.every((message, index) => message.id === incomingMessages[index]?.id);
-
-    if (incomingLooksComplete) {
-        return incomingMessages;
-    }
-
-    const previousIds = new Set(previousMessages.map((message) => message.id).filter(Boolean));
-    const unseenIncomingMessages = incomingMessages.filter((message) => !previousIds.has(message.id));
-
-    return [...previousMessages, ...unseenIncomingMessages];
-}
-
-function toMessageArray(messages: unknown): ChatUIMessage[] {
-    if (!Array.isArray(messages)) return [];
-    return messages as ChatUIMessage[];
-}
-
-function hashString(value: string): string {
-    let hash = 0;
-
-    for (let index = 0; index < value.length; index += 1) {
-        hash = Math.imul(31, hash) + value.charCodeAt(index);
-        hash |= 0;
-    }
-
-    return Math.abs(hash).toString(36);
-}
-
-function ensureMessageIds(messages: ChatUIMessage[], sessionId: string) {
-    return messages.map((message, index) => {
-        if (message.id && message.id.trim().length > 0) {
-            return message;
-        }
-
-        const fingerprint = hashString(`${sessionId}:${index}:${message.role}:${getMessageText(message)}`);
-
-        return {
-            ...message,
-            id: `${message.role}-${index}-${fingerprint}`,
-        };
-    });
-}
-
-function getMessageIdentity(message: ChatUIMessage, index: number): string {
-    if (message.id) return `id:${message.id}`;
-    return `fallback:${message.role}:${getMessageText(message)}:${index}`;
-}
-
-function mergeMessageSets(...sets: ChatUIMessage[][]): ChatUIMessage[] {
-    const merged: ChatUIMessage[] = [];
-    const seen = new Set<string>();
-
-    for (const set of sets) {
-        set.forEach((message, index) => {
-            const identity = getMessageIdentity(message, index);
-            if (seen.has(identity)) return;
-            seen.add(identity);
-            merged.push(message);
-        });
-    }
-
-    return merged;
-}
-
-function getMessageText(message?: ChatUIMessage): string {
-    if (!message?.parts) return "";
-
-    return message.parts
-        .map((part) => {
-            if (part.type === "text") return part.text;
-            return "";
-        })
-        .filter(Boolean)
-        .join("\n")
-        .trim();
-}
-
+/**
+ * Generates a descriptive title from the first user message.
+ */
 async function generateTitle(messages: ChatUIMessage[]): Promise<string> {
     const firstUserMessage = messages.find((m) => m.role === "user");
-    const userText = getMessageText(firstUserMessage);
+    const userText = firstUserMessage?.parts
+        ?.map((p) => (p.type === "text" ? p.text : ""))
+        .join("")
+        .trim();
 
     if (!userText) return "New Chat";
 
     try {
-        const { text } = await generateText({
-            model: openrouter(DEFAULT_MODEL),
-            prompt: [
-                "Generate a concise chat title (max 60 characters, no quotes) for this user message:",
-                `"${userText.slice(0, 400)}"`,
-                "Reply with only the title text, nothing else.",
-            ].join("\n"),
-            maxOutputTokens: 30,
+        const { output } = await generateText({
+            model: openrouter("google/gemini-2.5-flash"),
+            system: "You are a helpful assistant. Reply with a JSON object containing a concise chat title.",
+            messages: [
+                {
+                    role: "user",
+                    content: `Generate a concise chat title (max 60 characters, no quotes) for this user message: "${userText.slice(0, 400)}"`,
+                }
+            ],
+            output: Output.object({
+                schema: z.object({
+                    title: z.string().describe("A concise chat title, max 60 characters, no quotes"),
+                }),
+            }),
         });
 
-        const generated = text.trim().replace(/^["']|["']$/g, "");
+        const generated = output.title.trim().replace(/^["']|["']$/g, "");
         if (generated.length > 0 && generated.length <= 120) {
             return generated.length > 60 ? `${generated.slice(0, 60).trim()}...` : generated;
         }
@@ -220,42 +162,28 @@ export async function POST(req: Request) {
                 : [];
         const sessionId = body.sessionId ?? body.id;
 
-        debugChatPersistence("Incoming payload", {
-            hasMessage: Boolean(body.message),
-            messagesLength: Array.isArray(body.messages) ? body.messages.length : 0,
-            hasId: Boolean(body.id),
-            hasSessionId: Boolean(body.sessionId),
-            resolvedSessionId: sessionId ?? null,
-            incomingMessagesLength: incomingMessages.length,
-        });
-
         if (incomingMessages.length === 0) {
             return new Response("Missing or invalid message", { status: 400 });
         }
 
         const isNewSession = !sessionId || sessionId === "new";
-        let activeMessages: ChatUIMessage[] = incomingMessages;
         let activeSessionId: string;
+        let activeMessages: ChatUIMessage[];
 
         if (isNewSession) {
-            const session = await prisma.chatSession.create({
+            activeSessionId = randomUUID();
+            activeMessages = sanitizeMessages(incomingMessages, activeSessionId);
+
+            await prisma.chatSession.create({
                 data: {
+                    id: activeSessionId,
                     userId: userId ?? undefined,
-                    title: "Generating title...",
+                    title: "New Chat",
                     messages: activeMessages as unknown as Prisma.InputJsonValue,
                 },
             });
-
-            activeSessionId = session.id;
-            activeMessages = ensureMessageIds(activeMessages, activeSessionId);
-
-            await prisma.chatSession.update({
-                where: { id: activeSessionId },
-                data: { messages: activeMessages as unknown as Prisma.InputJsonValue },
-            });
         } else {
             activeSessionId = sessionId;
-
             const session = await prisma.chatSession.findUnique({
                 where: { id: activeSessionId },
             });
@@ -268,31 +196,30 @@ export async function POST(req: Request) {
                 return new Response("Unauthorized access to session", { status: 403 });
             }
 
-            activeMessages = ensureMessageIds(
-                mergeWithStoredMessages(session.messages, incomingMessages),
-                activeSessionId,
-            );
+            const storedMessages = sanitizeMessages((session.messages || []) as unknown as ChatUIMessage[], activeSessionId);
+            const storedIds = new Set(storedMessages.map((m) => m.id).filter(Boolean));
+            const unseenIncoming = incomingMessages.filter((m) => !storedIds.has(m.id));
+
+            activeMessages = sanitizeMessages([...storedMessages, ...unseenIncoming], activeSessionId);
 
             await prisma.chatSession.update({
                 where: { id: activeSessionId },
-                data: { messages: activeMessages as unknown as Prisma.InputJsonValue },
+                data: {
+                    messages: activeMessages as unknown as Prisma.InputJsonValue,
+                },
             });
         }
-
-        debugChatPersistence("Active messages before stream", {
-            sessionId: activeSessionId,
-            activeMessagesLength: activeMessages.length,
-            isNewSession,
-        });
 
         const validatedMessages = await validateUIMessages<ChatUIMessage>({
             messages: activeMessages,
             tools,
         });
 
-        const modelMessages = await convertToModelMessages(injectQuoteContext(validatedMessages), {
-            ignoreIncompleteToolCalls: true,
-        });
+        const modelMessages = await convertToModelMessages(
+            injectQuoteContext(validatedMessages),
+            { ignoreIncompleteToolCalls: true }
+        );
+
         const result = streamText({
             model: openrouter(DEFAULT_MODEL),
             system: SYSTEM_PROMPT,
@@ -318,45 +245,24 @@ export async function POST(req: Request) {
                         select: { messages: true },
                     });
 
-                    const latestMessages = ensureMessageIds(toMessageArray(latestSession?.messages), activeSessionId);
-                    const finished = ensureMessageIds(toMessageArray(finishedMessages), activeSessionId);
-                    const mergedMessages = ensureMessageIds(
-                        mergeMessageSets(latestMessages, activeMessages, finished),
-                        activeSessionId,
+                    const latestMessages = sanitizeMessages(
+                        (latestSession?.messages || []) as unknown as ChatUIMessage[],
+                        activeSessionId
                     );
+                    const latestIds = new Set(latestMessages.map((m) => m.id).filter(Boolean));
+                    const unseenFinished = finishedMessages.filter((m) => !latestIds.has(m.id));
 
-                    const finishedLooksIncomplete =
-                        finished.length > 0 &&
-                        (finished.length < activeMessages.length ||
-                            !activeMessages.every((message) =>
-                                message.id ? finished.some((candidate) => candidate.id === message.id) : true,
-                            ));
-
-                    debugChatPersistence("Finish merge stats", {
-                        sessionId: activeSessionId,
-                        finishedMessagesLength: finished.length,
-                        latestMessagesLength: latestMessages.length,
-                        activeMessagesLength: activeMessages.length,
-                        mergedMessagesLength: mergedMessages.length,
-                        finishedLooksIncomplete,
-                    });
+                    const finalMessages = sanitizeMessages(
+                        [...latestMessages, ...unseenFinished],
+                        activeSessionId
+                    );
 
                     await prisma.chatSession.update({
                         where: { id: activeSessionId },
                         data: {
-                            messages: mergedMessages as unknown as Prisma.InputJsonValue,
-                            ...(isNewSession ? { title: await generateTitle(validatedMessages) } : {}),
+                            messages: finalMessages as unknown as Prisma.InputJsonValue,
+                            ...(isNewSession ? { title: await generateTitle(finalMessages) } : {}),
                         },
-                    });
-
-                    const verifySession = await prisma.chatSession.findUnique({
-                        where: { id: activeSessionId },
-                        select: { messages: true },
-                    });
-
-                    debugChatPersistence("Post-update verification", {
-                        sessionId: activeSessionId,
-                        persistedMessagesLength: toMessageArray(verifySession?.messages).length,
                     });
                 } catch (err) {
                     console.error("[API/Chat] Failed to persist finished messages:", err);
