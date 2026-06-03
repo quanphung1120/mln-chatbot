@@ -386,6 +386,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   User: 'User',
   ChatSession: 'ChatSession',
+  GameState: 'GameState',
   Document: 'Document',
   Chunk: 'Chunk'
 } as const
@@ -403,7 +404,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "chatSession" | "document" | "chunk"
+    modelProps: "user" | "chatSession" | "gameState" | "document" | "chunk"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -552,6 +553,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.ChatSessionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.ChatSessionCountAggregateOutputType> | number
+        }
+      }
+    }
+    GameState: {
+      payload: Prisma.$GameStatePayload<ExtArgs>
+      fields: Prisma.GameStateFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.GameStateFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.GameStateFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>
+        }
+        findFirst: {
+          args: Prisma.GameStateFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.GameStateFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>
+        }
+        findMany: {
+          args: Prisma.GameStateFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>[]
+        }
+        create: {
+          args: Prisma.GameStateCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>
+        }
+        createMany: {
+          args: Prisma.GameStateCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.GameStateCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>[]
+        }
+        delete: {
+          args: Prisma.GameStateDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>
+        }
+        update: {
+          args: Prisma.GameStateUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>
+        }
+        deleteMany: {
+          args: Prisma.GameStateDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.GameStateUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.GameStateUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>[]
+        }
+        upsert: {
+          args: Prisma.GameStateUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$GameStatePayload>
+        }
+        aggregate: {
+          args: Prisma.GameStateAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGameState>
+        }
+        groupBy: {
+          args: Prisma.GameStateGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GameStateGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.GameStateCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.GameStateCountAggregateOutputType> | number
         }
       }
     }
@@ -746,6 +821,19 @@ export const ChatSessionScalarFieldEnum = {
 } as const
 
 export type ChatSessionScalarFieldEnum = (typeof ChatSessionScalarFieldEnum)[keyof typeof ChatSessionScalarFieldEnum]
+
+
+export const GameStateScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  coins: 'coins',
+  focusMinutes: 'focusMinutes',
+  placements: 'placements',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GameStateScalarFieldEnum = (typeof GameStateScalarFieldEnum)[keyof typeof GameStateScalarFieldEnum]
 
 
 export const DocumentScalarFieldEnum = {
@@ -999,6 +1087,7 @@ export type PrismaClientOptions = ({
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   chatSession?: Prisma.ChatSessionOmit
+  gameState?: Prisma.GameStateOmit
   document?: Prisma.DocumentOmit
   chunk?: Prisma.ChunkOmit
 }

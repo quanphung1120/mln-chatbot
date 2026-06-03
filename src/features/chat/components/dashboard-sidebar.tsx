@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton, useUser, Show } from "@clerk/nextjs";
-import { Plus, GalleryVerticalEnd, UploadCloud, Trash2, MoreHorizontal, Pencil } from "lucide-react";
+import { Plus, GalleryVerticalEnd, UploadCloud, Trash2, MoreHorizontal, Pencil, Gamepad2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { deleteSessionAction, renameSessionAction } from "@/features/chat/actions";
@@ -89,6 +89,16 @@ export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
                 >
                   <Plus className="size-4 shrink-0 text-primary" />
                   <span className="truncate">New Chat</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/dashboard/study-room" />}
+                  tooltip="Study, earn coins, and build your 3D room"
+                  className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                >
+                  <Gamepad2 className="size-4 shrink-0" />
+                  <span className="truncate">Study Room</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

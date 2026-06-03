@@ -28,6 +28,11 @@ export type User = Prisma.UserModel
  */
 export type ChatSession = Prisma.ChatSessionModel
 /**
+ * Model GameState
+ * 
+ */
+export type GameState = Prisma.GameStateModel
+/**
  * Model Document
  * 
  */

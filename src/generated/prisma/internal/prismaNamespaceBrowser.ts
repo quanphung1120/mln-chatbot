@@ -53,6 +53,7 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   ChatSession: 'ChatSession',
+  GameState: 'GameState',
   Document: 'Document',
   Chunk: 'Chunk'
 } as const
@@ -93,6 +94,19 @@ export const ChatSessionScalarFieldEnum = {
 } as const
 
 export type ChatSessionScalarFieldEnum = (typeof ChatSessionScalarFieldEnum)[keyof typeof ChatSessionScalarFieldEnum]
+
+
+export const GameStateScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  coins: 'coins',
+  focusMinutes: 'focusMinutes',
+  placements: 'placements',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type GameStateScalarFieldEnum = (typeof GameStateScalarFieldEnum)[keyof typeof GameStateScalarFieldEnum]
 
 
 export const DocumentScalarFieldEnum = {
