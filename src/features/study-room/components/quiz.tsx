@@ -118,10 +118,12 @@ export function Quiz({ open, onClose }: { open: boolean; onClose: () => void }) 
           {/* explanation + next */}
           {revealed && (
             <div className="mt-4 border-t border-white/10 pt-3">
-              <p className="mb-3 text-xs leading-relaxed text-white/60">
-                <span className="font-semibold text-white/80">Giải thích: </span>
-                {question.explain}
-              </p>
+              {question.explain && (
+                <p className="mb-3 text-xs leading-relaxed text-white/60">
+                  <span className="font-semibold text-white/80">Giải thích: </span>
+                  {question.explain}
+                </p>
+              )}
               <button
                 onClick={next}
                 className="w-full border border-amber-400/50 bg-amber-400/15 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/25"
