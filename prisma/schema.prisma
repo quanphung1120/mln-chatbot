@@ -28,6 +28,18 @@ model ChatSession {
   @@map("chat_sessions")
 }
 
+model GameState {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique
+  coins        Int      @default(0)
+  focusMinutes Int      @default(0)
+  placements   Json     @default("[]")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("game_states")
+}
+
 model Document {
   id         String   @id @default(uuid()) @db.Uuid
   filename   String   @db.VarChar(255)

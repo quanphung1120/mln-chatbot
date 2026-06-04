@@ -10,6 +10,7 @@
  */
 export type * from './models/User'
 export type * from './models/ChatSession'
+export type * from './models/GameState'
 export type * from './models/Document'
 export type * from './models/Chunk'
 export type * from './commonInputTypes'
