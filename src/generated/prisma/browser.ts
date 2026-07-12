@@ -33,6 +33,31 @@ export type ChatSession = Prisma.ChatSessionModel
  */
 export type GameState = Prisma.GameStateModel
 /**
+ * Model QuizAttempt
+ * 
+ */
+export type QuizAttempt = Prisma.QuizAttemptModel
+/**
+ * Model QuestionStat
+ * 
+ */
+export type QuestionStat = Prisma.QuestionStatModel
+/**
+ * Model UserStats
+ * 
+ */
+export type UserStats = Prisma.UserStatsModel
+/**
+ * Model QuizExplanation
+ * 
+ */
+export type QuizExplanation = Prisma.QuizExplanationModel
+/**
+ * Model StudyRoom
+ * 
+ */
+export type StudyRoom = Prisma.StudyRoomModel
+/**
  * Model Document
  * 
  */

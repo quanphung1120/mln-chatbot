@@ -1,20 +1,11 @@
 // ---------------------------------------------------------------------------
 // Ngân hàng câu hỏi Triết học Mác – Lênin (MLN111).
-// Mỗi câu trả lời đúng giúp bạn kiếm coins để xây dựng căn phòng / ngôi nhà.
 // `answer` là chỉ số (index) của đáp án đúng trong mảng `options`.
 // ---------------------------------------------------------------------------
 
-export interface QuizQuestion {
-  id: number;
-  question: string;
-  options: string[];
-  answer: number;
-  explain?: string;
-}
+import type { QuizQuestion } from "../types";
 
-export const COINS_PER_CORRECT = 15;
-
-export const QUIZ_QUESTIONS: QuizQuestion[] = [
+export const MLN111_QUESTIONS: QuizQuestion[] = [
   {
     id: 1,
     question: "Ai là người đưa ra định nghĩa kinh điển về phạm trù “vật chất” trong triết học Mác – Lênin?",

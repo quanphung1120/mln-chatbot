@@ -4,6 +4,7 @@ import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { COURSE_CODES } from "@/lib/courses";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MLN FPT Study Portal",
-  description: "Marxist-Leninist reference and study portal for MLN111, MLN122, and MLN131 courses aligned with FPT University materials",
+  description: `Marxist-Leninist reference and study portal for ${COURSE_CODES.join(", ")} courses aligned with FPT University materials`,
   icons: {
     icon: '/fu-logo.png'
   }

@@ -62,13 +62,14 @@ GUIDELINES & MANDATORY TOOL USAGE:
 
 const tools = {
     searchDocumentation: tool({
-        description: "CRITICAL: Call this tool for ANY question, concept, syllabus topic, or query about Marxist-Leninist subjects (MLN111, MLN122, MLN131, Philosophy, Triết học, Kinh tế chính trị, Chủ nghĩa xã hội). You must call this tool first before answering.",
+        description: "CRITICAL: Call this tool for ANY question, concept, syllabus topic, or query about Marxist-Leninist subjects (MLN111, MLN122, MLN131, Philosophy, Triết học, Kinh tế chính trị, Chủ nghĩa xã hội). You must call this tool first before answering. Pass `courseCode` to narrow retrieval to a single course's materials when the question is clearly about one course.",
         inputSchema: z.object({
             query: z.string().describe("The search query, concept, or keywords in English or Vietnamese to search in the official database."),
+            courseCode: z.enum(["MLN111", "MLN122", "MLN131"]).optional().describe("Optional course code to restrict retrieval to a single subject's documents."),
         }),
-        execute: async ({ query }) => {
+        execute: async ({ query, courseCode }) => {
             try {
-                const results = await searchDocumentation(query, 6);
+                const results = await searchDocumentation(query, 6, courseCode);
                 return results.map((result) => ({
                     filename: result.filename,
                     text: result.text,
@@ -154,6 +155,10 @@ export async function POST(req: Request) {
         }
 
         const { userId } = await auth();
+        if (!userId) {
+            return new Response("Unauthorized", { status: 401 });
+        }
+
         const body = (await req.json()) as ChatRequestBody;
         const incomingMessages = Array.isArray(body.messages)
             ? body.messages

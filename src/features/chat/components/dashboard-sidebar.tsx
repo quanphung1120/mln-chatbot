@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton, useUser, Show } from "@clerk/nextjs";
-import { Plus, GalleryVerticalEnd, UploadCloud, Trash2, MoreHorizontal, Pencil, Gamepad2 } from "lucide-react";
+import { Plus, GalleryVerticalEnd, UploadCloud, Trash2, MoreHorizontal, Pencil, Gamepad2, GraduationCap, Trophy } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { deleteSessionAction, renameSessionAction } from "@/features/chat/actions";
@@ -93,12 +93,32 @@ export function DashboardSidebar({ sessions }: DashboardSidebarProps) {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  render={<Link href="/dashboard/quiz" />}
+                  tooltip="Luyện tập, thi thử và ôn câu sai"
+                  className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                >
+                  <GraduationCap className="size-4 shrink-0" />
+                  <span className="truncate">Ôn tập & Thi thử</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   render={<Link href="/dashboard/study-room" />}
                   tooltip="Study, earn coins, and build your 3D room"
                   className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 >
                   <Gamepad2 className="size-4 shrink-0" />
                   <span className="truncate">Study Room</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/dashboard/leaderboard" />}
+                  tooltip="Bảng xếp hạng theo XP"
+                  className="gap-3 rounded-xl px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                >
+                  <Trophy className="size-4 shrink-0" />
+                  <span className="truncate">Bảng xếp hạng</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

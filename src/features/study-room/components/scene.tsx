@@ -2,10 +2,11 @@
 
 import { useRef, useState } from "react";
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
-import { OrbitControls, Sky } from "@react-three/drei";
+import { ContactShadows, OrbitControls, Sky } from "@react-three/drei";
 import { GRID_D, GRID_W } from "../catalog";
 import { worldToTile } from "../geometry";
 import { useGameStore } from "../store";
+import type { RoomTheme } from "../themes";
 import { Room } from "./room";
 import { Character } from "./character";
 import { Furniture } from "./furniture";
@@ -17,7 +18,7 @@ import { Environment } from "./environment";
 // grid tiles for ghost preview + placement.
 // ---------------------------------------------------------------------------
 
-function World() {
+function World({ theme }: { theme: RoomTheme }) {
   const buildMode = useGameStore((s) => s.buildMode);
   const tryPlace = useGameStore((s) => s.tryPlace);
   const [ghost, setGhost] = useState<{ gridX: number; gridZ: number } | null>(null);
@@ -45,12 +46,12 @@ function World() {
 
   return (
     <group>
-      <hemisphereLight args={["#dff0ff", "#5a7a40", 0.9]} />
-      <ambientLight intensity={0.4} />
+      <hemisphereLight args={[theme.light.hemiSky, theme.light.hemiGround, theme.light.ambient + 0.5]} />
+      <ambientLight intensity={theme.light.ambient} />
       <directionalLight
-        position={[8, 14, 5]}
-        intensity={2}
-        color="#fff1d6"
+        position={theme.sky.sunPosition}
+        intensity={theme.light.dirIntensity}
+        color={theme.light.dirColor}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -60,8 +61,16 @@ function World() {
         shadow-camera-bottom={-16}
       />
 
-      <Environment />
-      <Room />
+      <Environment theme={theme} />
+      <Room theme={theme} />
+      <ContactShadows
+        position={[0, 0.02, 0]}
+        scale={GRID_W + 4}
+        blur={2.4}
+        opacity={0.35}
+        far={5}
+        resolution={512}
+      />
       <Furniture ghost={ghost} />
       <Character />
 
@@ -82,7 +91,7 @@ function World() {
   );
 }
 
-export default function Scene() {
+export default function Scene({ theme }: { theme: RoomTheme }) {
   return (
     <Canvas
       shadows="soft"
@@ -90,10 +99,15 @@ export default function Scene() {
       camera={{ position: [9, 10, 11], fov: 32 }}
       style={{ width: "100%", height: "100%" }}
     >
-      <color attach="background" args={["#bcd9e8"]} />
-      <fog attach="fog" args={["#cfe3df", 30, 70]} />
-      <Sky sunPosition={[8, 14, 5]} turbidity={5} rayleigh={1.2} mieCoefficient={0.005} />
-      <World />
+      <color attach="background" args={[theme.bg]} />
+      <fog attach="fog" args={theme.fog} />
+      <Sky
+        sunPosition={theme.sky.sunPosition}
+        turbidity={theme.sky.turbidity}
+        rayleigh={theme.sky.rayleigh}
+        mieCoefficient={theme.sky.mieCoefficient}
+      />
+      <World theme={theme} />
       <OrbitControls
         makeDefault
         enablePan={false}

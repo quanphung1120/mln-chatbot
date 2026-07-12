@@ -40,6 +40,87 @@ model GameState {
   @@map("game_states")
 }
 
+// One row per completed quiz run (practice / exam / review).
+model QuizAttempt {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String
+  courseCode  String   @db.VarChar(16)
+  mode        String   @db.VarChar(16)
+  total       Int
+  correct     Int
+  /** score as an integer percent 0..100 */
+  score       Int
+  durationSec Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, courseCode, createdAt])
+  @@map("quiz_attempts")
+}
+
+// Per-user, per-question stats — drives "review wrong" + spaced repetition.
+model QuestionStat {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String
+  courseCode   String   @db.VarChar(16)
+  questionId   Int
+  timesSeen    Int      @default(0)
+  timesCorrect Int      @default(0)
+  lastCorrect  Boolean  @default(false)
+  /** next review due date (spaced repetition) */
+  dueAt        DateTime @default(now())
+  /** ease factor * 100 (SM-2 style), default 2.5 -> 250 */
+  ease         Int      @default(250)
+  /** current interval in days */
+  intervalDays Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, courseCode, questionId])
+  @@index([userId, courseCode, dueAt])
+  @@map("question_stats")
+}
+
+// Aggregate per-user gamification stats (streak, xp) + display snapshot.
+model UserStats {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @unique
+  displayName    String?   @db.VarChar(120)
+  avatarUrl      String?
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime?
+  xp             Int       @default(0)
+  updatedAt      DateTime  @updatedAt
+
+  @@index([xp])
+  @@map("user_stats")
+}
+
+// Cache of AI-generated explanations, keyed by course + question.
+model QuizExplanation {
+  id         String   @id @default(uuid()) @db.Uuid
+  courseCode String   @db.VarChar(16)
+  questionId Int
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@unique([courseCode, questionId])
+  @@map("quiz_explanations")
+}
+
+// Per-course decorated study room. Coins/focusMinutes stay on GameState (a
+// single shared wallet); only the furniture layout is scoped per course.
+model StudyRoom {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String
+  courseCode String   @db.VarChar(16)
+  placements Json     @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, courseCode])
+  @@map("study_rooms")
+}
+
 model Document {
   id         String   @id @default(uuid()) @db.Uuid
   filename   String   @db.VarChar(255)

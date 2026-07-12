@@ -54,6 +54,11 @@ export const ModelName = {
   User: 'User',
   ChatSession: 'ChatSession',
   GameState: 'GameState',
+  QuizAttempt: 'QuizAttempt',
+  QuestionStat: 'QuestionStat',
+  UserStats: 'UserStats',
+  QuizExplanation: 'QuizExplanation',
+  StudyRoom: 'StudyRoom',
   Document: 'Document',
   Chunk: 'Chunk'
 } as const
@@ -107,6 +112,76 @@ export const GameStateScalarFieldEnum = {
 } as const
 
 export type GameStateScalarFieldEnum = (typeof GameStateScalarFieldEnum)[keyof typeof GameStateScalarFieldEnum]
+
+
+export const QuizAttemptScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  courseCode: 'courseCode',
+  mode: 'mode',
+  total: 'total',
+  correct: 'correct',
+  score: 'score',
+  durationSec: 'durationSec',
+  createdAt: 'createdAt'
+} as const
+
+export type QuizAttemptScalarFieldEnum = (typeof QuizAttemptScalarFieldEnum)[keyof typeof QuizAttemptScalarFieldEnum]
+
+
+export const QuestionStatScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  courseCode: 'courseCode',
+  questionId: 'questionId',
+  timesSeen: 'timesSeen',
+  timesCorrect: 'timesCorrect',
+  lastCorrect: 'lastCorrect',
+  dueAt: 'dueAt',
+  ease: 'ease',
+  intervalDays: 'intervalDays',
+  updatedAt: 'updatedAt'
+} as const
+
+export type QuestionStatScalarFieldEnum = (typeof QuestionStatScalarFieldEnum)[keyof typeof QuestionStatScalarFieldEnum]
+
+
+export const UserStatsScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  displayName: 'displayName',
+  avatarUrl: 'avatarUrl',
+  currentStreak: 'currentStreak',
+  longestStreak: 'longestStreak',
+  lastActiveDate: 'lastActiveDate',
+  xp: 'xp',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserStatsScalarFieldEnum = (typeof UserStatsScalarFieldEnum)[keyof typeof UserStatsScalarFieldEnum]
+
+
+export const QuizExplanationScalarFieldEnum = {
+  id: 'id',
+  courseCode: 'courseCode',
+  questionId: 'questionId',
+  content: 'content',
+  createdAt: 'createdAt'
+} as const
+
+export type QuizExplanationScalarFieldEnum = (typeof QuizExplanationScalarFieldEnum)[keyof typeof QuizExplanationScalarFieldEnum]
+
+
+export const StudyRoomScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  courseCode: 'courseCode',
+  placements: 'placements',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type StudyRoomScalarFieldEnum = (typeof StudyRoomScalarFieldEnum)[keyof typeof StudyRoomScalarFieldEnum]
 
 
 export const DocumentScalarFieldEnum = {

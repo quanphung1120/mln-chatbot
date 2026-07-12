@@ -77,6 +77,8 @@ function nextId() {
 
 interface GameStore {
   loaded: boolean;
+  /** course code of the room currently open (shared wallet, per-course layout) */
+  courseCode: string;
   coins: number;
   focusMinutes: number;
   placements: Placement[];
@@ -88,7 +90,7 @@ interface GameStore {
   // session-only stats (not persisted)
   quizCorrect: number;
 
-  hydrate: (state: GameStateDTO) => void;
+  hydrate: (state: GameStateDTO, courseCode: string) => void;
   addCoins: (amount: number) => void;
   recordQuizCorrect: () => void;
   setBuildMode: (on: boolean) => void;
@@ -101,6 +103,7 @@ interface GameStore {
 
 export const useGameStore = create<GameStore>((set, get) => ({
   loaded: false,
+  courseCode: "",
   coins: 0,
   focusMinutes: 0,
   placements: [],
@@ -111,11 +114,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   quizCorrect: 0,
 
-  hydrate: (state) =>
+  hydrate: (state, courseCode) =>
     set({
       loaded: true,
+      courseCode,
       coins: state.coins,
       focusMinutes: state.focusMinutes,
+      // Reset transient build state when (re)entering a room.
+      buildMode: false,
+      selectedType: null,
+      ghostRot: 0,
       // Re-key on load so any duplicate ids saved by older builds are healed.
       placements: (state.placements ?? []).map((p) => ({ ...p, id: nextId() })),
     }),
