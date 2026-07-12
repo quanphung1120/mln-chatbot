@@ -1,64 +1,35 @@
+"use client";
+
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import React from "react";
-
-const ghostPillBtn: React.CSSProperties = {
-  background: "transparent",
-  color: "rgba(255,255,255,0.8)",
-  border: "1px solid rgba(255,255,255,0.3)",
-  borderRadius: "75.024px",
-  padding: "8px 22px",
-  fontSize: "13px",
-  letterSpacing: "0.06em",
-  cursor: "pointer",
-  fontFamily: "system-ui, sans-serif",
-  fontWeight: 300,
-  transition: "border-color 0.2s, color 0.2s",
-};
-
-const solidPillBtn: React.CSSProperties = {
-  background: "rgba(255,255,255,0.9)",
-  color: "#000000",
-  border: "1px solid transparent",
-  borderRadius: "75.024px",
-  padding: "8px 22px",
-  fontSize: "13px",
-  letterSpacing: "0.06em",
-  cursor: "pointer",
-  fontFamily: "system-ui, sans-serif",
-  fontWeight: 400,
-  transition: "background 0.2s",
-};
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default function HeaderAuth() {
   return (
-    <>
+    <div className="flex items-center gap-2">
       <Show when="signed-out">
         <SignInButton mode="modal">
-          <button style={ghostPillBtn} id="nav-signin-btn">
-            Sign In
-          </button>
+          <Button variant="ghost" size="sm">
+            Đăng nhập
+          </Button>
         </SignInButton>
         <SignUpButton mode="modal">
-          <button style={solidPillBtn} id="nav-signup-btn">
-            Get Started
-          </button>
+          <Button size="sm">Bắt đầu miễn phí</Button>
         </SignUpButton>
       </Show>
 
       <Show when="signed-in">
-        <a href="/dashboard">
-          <button style={solidPillBtn} id="nav-dashboard-btn">
-            Dashboard
-          </button>
-        </a>
+        <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>
+          Bảng điều khiển
+        </Button>
         <UserButton
           appearance={{
             elements: {
-              avatarBox: "w-8 h-8 rounded-full border border-white/30",
+              avatarBox: "size-8",
             },
           }}
         />
       </Show>
-    </>
+    </div>
   );
 }

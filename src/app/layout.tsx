@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MLN FPT Study Portal",
-  description: `Marxist-Leninist reference and study portal for ${COURSE_CODES.join(", ")} courses aligned with FPT University materials`,
+  description: `Cổng tra cứu và ôn tập Mác – Lênin dành cho sinh viên Đại học FPT, bám sát giáo trình các môn ${COURSE_CODES.join(", ")}.`,
   icons: {
     icon: '/fu-logo.png'
   }
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="vi" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="h-full antialiased bg-background text-foreground relative">
         {/* Global paper texture noise overlay */}
         <div className="absolute inset-0 bg-pattern-noise opacity-[0.015] pointer-events-none z-50" />
