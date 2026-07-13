@@ -1,17 +1,21 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse, type NextRequest } from "next/server";
 import path from "path";
-import pdf from "pdf-parse";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
 
 import { prisma } from "@/lib/db";
 import { chunkText } from "@/lib/chunk-text";
+import { contextualizeChunks } from "@/lib/contextualize-chunks";
 import { generateEmbeddings } from "@/lib/embeddings";
+import { parsePdfToMarkdown } from "@/lib/parse-pdf";
 
 // Must run on Node.js runtime for pdf parsing and server-side ingestion.
 export const runtime = "nodejs";
+// Ingestion makes one LLM call per chunk (contextual retrieval) — allow the
+// function to run long enough for large documents.
+export const maxDuration = 300;
 
 // ---------------------------------------------------------------------------
 // Security: Allow-listed MIME types for upload
@@ -108,14 +112,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             resolvedSizeBytes = arrayBuffer.byteLength;
 
             const pdfBuffer = Buffer.from(arrayBuffer);
-            const parsedPdf = await pdf(pdfBuffer);
-            rawText = parsedPdf.text;
+            rawText = await parsePdfToMarkdown(pdfBuffer);
           } else {
             rawText = await fetchRes.text();
             resolvedSizeBytes = Buffer.byteLength(rawText);
           }
 
-          const chunks = chunkText(rawText, { chunkSize: 800, overlap: 100 });
+          const chunks = await chunkText(rawText, { chunkSize: 800, overlap: 100 });
 
           if (chunks.length === 0) {
             console.warn(
@@ -134,11 +137,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             },
           });
 
-          const embeddings = await generateEmbeddings(
-            chunks.map((chunk) => chunk.text),
+          // Contextual retrieval: prepend a short document-level context to
+          // each chunk before embedding and storage, improving recall.
+          const contextualChunks = await contextualizeChunks(
+            chunks,
+            rawText,
+            safeFilename,
           );
 
-          const chunkRows = chunks.map((chunk, index) => Prisma.sql`
+          const embeddings = await generateEmbeddings(
+            contextualChunks.map((chunk) => chunk.text),
+          );
+
+          const chunkRows = contextualChunks.map((chunk, index) => Prisma.sql`
             (gen_random_uuid(), ${doc.id}::uuid, ${chunk.index}, ${chunk.text}, ${toVectorLiteral(embeddings[index])}::vector)
           `);
 

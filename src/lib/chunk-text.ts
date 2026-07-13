@@ -1,3 +1,5 @@
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+
 export interface TextChunk {
   index: number;
   text: string;
@@ -8,46 +10,54 @@ interface ChunkTextOptions {
   overlap?: number;
 }
 
-export function chunkText(
+/**
+ * Split markdown/plain text into chunks along document structure: headings
+ * first, then paragraphs, then sentences — falling back to a hard cut only
+ * when a single unbroken run exceeds chunkSize.
+ */
+export async function chunkText(
   input: string,
   { chunkSize = 800, overlap = 100 }: ChunkTextOptions = {},
-): TextChunk[] {
-  const text = input.replace(/\s+/g, " ").trim();
-  if (!text) return [];
+): Promise<TextChunk[]> {
   if (chunkSize <= 0) throw new Error("chunkSize must be greater than 0");
   if (overlap < 0 || overlap >= chunkSize) {
     throw new Error("overlap must be greater than or equal to 0 and less than chunkSize");
   }
 
-  const chunks: TextChunk[] = [];
-  let start = 0;
+  const text = input.trim();
+  if (!text) return [];
 
-  while (start < text.length) {
-    const targetEnd = Math.min(start + chunkSize, text.length);
-    let end = targetEnd;
+  const splitter = RecursiveCharacterTextSplitter.fromLanguage("markdown", {
+    chunkSize,
+    chunkOverlap: overlap,
+  });
 
-    if (targetEnd < text.length) {
-      const boundary = Math.max(
-        text.lastIndexOf(". ", targetEnd),
-        text.lastIndexOf("? ", targetEnd),
-        text.lastIndexOf("! ", targetEnd),
-        text.lastIndexOf("\n", targetEnd),
-        text.lastIndexOf(" ", targetEnd),
-      );
+  const pieces = (await splitter.splitText(text))
+    .map((piece) => piece.trim())
+    .filter((piece) => piece.length > 0);
 
-      if (boundary > start + chunkSize * 0.5) {
-        end = boundary + 1;
-      }
+  // The markdown splitter emits headings and stray fragments as standalone
+  // pieces; a chunk like "# Chapter 1" is useless on its own, so fold short
+  // pieces into the following chunk (or the previous one for the tail).
+  const MIN_CHUNK_CHARS = 100;
+  const merged: string[] = [];
+  let pending = "";
+  for (const piece of pieces) {
+    const candidate = pending ? `${pending}\n\n${piece}` : piece;
+    if (candidate.length < MIN_CHUNK_CHARS) {
+      pending = candidate;
+    } else {
+      merged.push(candidate);
+      pending = "";
     }
-
-    const chunk = text.slice(start, end).trim();
-    if (chunk) {
-      chunks.push({ index: chunks.length, text: chunk });
+  }
+  if (pending) {
+    if (merged.length > 0) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]}\n\n${pending}`;
+    } else {
+      merged.push(pending);
     }
-
-    if (end >= text.length) break;
-    start = Math.max(0, end - overlap);
   }
 
-  return chunks;
+  return merged.map((piece, index) => ({ index, text: piece }));
 }
