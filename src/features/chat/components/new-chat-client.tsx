@@ -34,9 +34,12 @@ export default function NewChatClient() {
     }),
     onFinish: () => {
       if (pendingSessionId) {
+        const newSessionId = pendingSessionId;
         setPendingSessionId(null);
-        window.dispatchEvent(new Event("chat-sessions-changed"));
-        router.push(`/dashboard/chat/${pendingSessionId}`);
+        router.push(`/dashboard/chat/${newSessionId}`);
+        // Re-fetch the dashboard layout (server component) so the freshly
+        // created session shows up in the sidebar without a full page reload.
+        router.refresh();
       }
     },
   });
