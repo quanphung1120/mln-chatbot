@@ -12,6 +12,7 @@ import {
   UploadCloud,
   FileCode2,
   Database,
+  Download,
 } from "lucide-react";
 import {
   Table,
@@ -557,16 +558,36 @@ export default function DocumentsClient({
 
                     {/* Actions */}
                     <TableCell className="pr-4 text-right">
-                      <Button
-                        id={`delete-doc-${doc.id}`}
-                        variant="ghost"
-                        size="icon"
-                        className="size-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => setDeleteDoc(doc)}
-                        title={`Delete ${doc.filename}`}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          id={`download-doc-${doc.id}`}
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          title={`Download ${doc.filename}`}
+                          render={
+                            <a
+                              href={`${doc.blobUrl}?download=1`}
+                              download={doc.filename}
+                            >
+                              <Download className="size-4" />
+                              <span className="sr-only">
+                                Download {doc.filename}
+                              </span>
+                            </a>
+                          }
+                        />
+                        <Button
+                          id={`delete-doc-${doc.id}`}
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteDoc(doc)}
+                          title={`Delete ${doc.filename}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

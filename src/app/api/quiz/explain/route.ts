@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
+import { openrouter } from "@/lib/openrouter";
 import { searchDocumentation } from "@/lib/vector-search";
 import { getCourse } from "@/lib/courses";
 import { getBank } from "@/features/quiz/data";
@@ -18,15 +18,6 @@ const EXPLAIN_MODEL = "tencent/hy3-preview";
 const bodySchema = z.object({
   courseCode: z.string().min(2).max(16),
   questionId: z.number().int(),
-});
-
-const openrouter = createOpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY,
-  headers: {
-    "HTTP-Referer": "https://github.com/quanphung1120/mln-chatbot",
-    "X-Title": "MLN Chatbot",
-  },
 });
 
 export async function POST(req: Request) {

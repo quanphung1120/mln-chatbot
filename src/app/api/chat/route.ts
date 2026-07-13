@@ -1,6 +1,5 @@
 import { injectQuoteContext } from "@assistant-ui/react-ai-sdk";
 import { auth } from "@clerk/nextjs/server";
-import { createOpenAI } from "@ai-sdk/openai";
 import {
     consumeStream,
     convertToModelMessages,
@@ -19,23 +18,16 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 
 import { prisma } from "@/lib/db";
-import { searchDocumentation } from "@/lib/vector-search";
+import { openrouter, PIPELINE_MODEL } from "@/lib/openrouter";
+import { retrieveWithFeedback } from "@/lib/rag-loop";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const DEFAULT_MODEL = "xiaomi/mimo-v2.5";
+// Reader model: writes the user-facing answer from the retrieved context.
+const DEFAULT_MODEL = "deepseek/deepseek-v4-pro";
 const SESSION_ID_HEADER = "X-Session-Id";
-
-const openrouter = createOpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: process.env.OPENROUTER_API_KEY,
-    headers: {
-        "HTTP-Referer": "https://github.com/quanphung1120/mln-chatbot",
-        "X-Title": "MLN Chatbot",
-    },
-});
 
 const SYSTEM_PROMPT = `
 You are MLN Assistant, a premium syllabus-aligned AI assistant for FPT University students studying Marxist-Leninist subjects:
@@ -83,10 +75,14 @@ const tools = {
             query: z.string().describe("The search query, concept, or keywords in English or Vietnamese to search in the official database."),
             courseCode: z.enum(["MLN111", "MLN122", "MLN131"]).optional().describe("Optional course code to restrict retrieval to a single subject's documents."),
         }),
-        execute: async ({ query, courseCode }) => {
+        execute: async ({ query, courseCode }, { messages }) => {
             try {
-                const results = await searchDocumentation(query, 6, courseCode);
-                return results.map((result) => ({
+                // Corrective RAG loop: rewrite the query, then retrieve and grade
+                // sufficiency in bounded rounds — refining and searching again to
+                // fill gaps — before returning the accumulated context.
+                const chunks = await retrieveWithFeedback(query, { courseCode, messages });
+
+                return chunks.map((result) => ({
                     filename: result.filename,
                     text: result.text,
                     score: Math.round((result.score ?? 1) * 100) + "%",
@@ -154,7 +150,7 @@ async function generateTitle(messages: ChatUIMessage[]): Promise<string> {
 
     try {
         const { output } = await generateText({
-            model: openrouter("google/gemini-2.5-flash"),
+            model: openrouter(PIPELINE_MODEL),
             system: "You are a helpful assistant. Reply with a JSON object containing a concise chat title.",
             messages: [
                 {
@@ -262,8 +258,19 @@ export async function POST(req: Request) {
             system: SYSTEM_PROMPT,
             messages: modelMessages,
             temperature: 0.1,
-            stopWhen: stepCountIs(5),
+            stopWhen: stepCountIs(3),
             tools,
+            // Once the model has retrieved documentation, force it to stop
+            // searching and write the final answer in the next step. This
+            // prevents weaker models from looping on repeated tool calls and
+            // ending the turn with no user-visible text.
+            prepareStep: ({ steps }) => {
+                const hasSearched = steps.some((step) => step.toolCalls.length > 0);
+                if (hasSearched) {
+                    return { toolChoice: "none" };
+                }
+                return {};
+            },
             abortSignal: req.signal,
         });
 

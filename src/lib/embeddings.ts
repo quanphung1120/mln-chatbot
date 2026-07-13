@@ -1,17 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import { embed, embedMany } from "ai";
 
-// ---------------------------------------------------------------------------
-// OpenRouter Provider Setup for Embeddings
-// ---------------------------------------------------------------------------
-const openrouter = createOpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || "",
-  headers: {
-    "HTTP-Referer": "https://github.com/quanphung1120/mln-chatbot",
-    "X-Title": "MLN Chatbot",
-  },
-});
+import { openrouter } from "@/lib/openrouter";
 
 // Standard premium 1536-dimensional embedding model hosted on OpenAI via OpenRouter
 const EMBEDDING_MODEL = openrouter.embeddingModel("openai/text-embedding-3-small");
