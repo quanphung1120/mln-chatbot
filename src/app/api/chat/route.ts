@@ -25,7 +25,7 @@ import type { Prisma } from "@/generated/prisma/client";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const DEFAULT_MODEL = "tencent/hy3-preview";
+const DEFAULT_MODEL = "xiaomi/mimo-v2.5";
 const SESSION_ID_HEADER = "X-Session-Id";
 
 const openrouter = createOpenAI({
