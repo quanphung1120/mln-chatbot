@@ -109,6 +109,22 @@ function sanitizeMessages(messages: ChatUIMessage[], sessionId: string): ChatUIM
 }
 
 /**
+ * Cheap, synchronous title derived from the first user message. Used as the
+ * session's initial title so the sidebar shows a meaningful name immediately,
+ * before the async LLM-generated title (generateTitle) refines it.
+ */
+function deriveTitle(messages: ChatUIMessage[]): string {
+    const firstUserMessage = messages.find((m) => m.role === "user");
+    const userText = firstUserMessage?.parts
+        ?.map((p) => (p.type === "text" ? p.text : ""))
+        .join("")
+        .trim();
+
+    if (!userText) return "New Chat";
+    return userText.length > 50 ? `${userText.slice(0, 50).trim()}...` : userText;
+}
+
+/**
  * Generates a descriptive title from the first user message.
  */
 async function generateTitle(messages: ChatUIMessage[]): Promise<string> {
@@ -183,7 +199,7 @@ export async function POST(req: Request) {
                 data: {
                     id: activeSessionId,
                     userId: userId ?? undefined,
-                    title: "New Chat",
+                    title: deriveTitle(activeMessages),
                     messages: activeMessages as unknown as Prisma.InputJsonValue,
                 },
             });
