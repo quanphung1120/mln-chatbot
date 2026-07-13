@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db";
 import { chunkText } from "@/lib/chunk-text";
 import { contextualizeChunks } from "@/lib/contextualize-chunks";
 import { generateEmbeddings } from "@/lib/embeddings";
-import { parsePdfToMarkdown } from "@/lib/parse-pdf";
+import { parsePdfToText } from "@/lib/parse-pdf";
 
 // Must run on Node.js runtime for pdf parsing and server-side ingestion.
 export const runtime = "nodejs";
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             resolvedSizeBytes = arrayBuffer.byteLength;
 
             const pdfBuffer = Buffer.from(arrayBuffer);
-            rawText = await parsePdfToMarkdown(pdfBuffer);
+            rawText = await parsePdfToText(pdfBuffer);
           } else {
             rawText = await fetchRes.text();
             resolvedSizeBytes = Buffer.byteLength(rawText);
