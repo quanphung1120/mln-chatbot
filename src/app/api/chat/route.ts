@@ -120,6 +120,61 @@ function sanitizeMessages(messages: ChatUIMessage[], sessionId: string): ChatUIM
     }));
 }
 
+const SMALL_TALK_SYSTEM = `
+You classify a single message sent by a student to a university tutoring assistant for Marxist-Leninist courses (MLN111 Triết học, MLN122 Kinh tế chính trị, MLN131 Chủ nghĩa xã hội khoa học). Messages are in Vietnamese or English.
+
+Decide whether the message is PURE small talk: a greeting, thanks, goodbye, acknowledgement, or a meta question about the assistant itself (e.g. "hi", "thanks!", "xin chào", "cảm ơn bạn nhiều nhé", "tạm biệt", "bạn là ai?", "what can you do?").
+
+Anything that asks about, mentions, or follows up on course content, concepts, or study topics — or requests any substantive help — is NOT small talk. This includes bare terms ("ý thức", "giá trị thặng dư") and short follow-ups ("explain more", "cho ví dụ", "còn phần sau?").
+
+When unsure, classify as NOT small talk.
+`.trim();
+
+/**
+ * Classifies the message with the cheap pipeline model. Fails closed (not
+ * small talk) so a classifier outage can never suppress retrieval — a wasted
+ * search on "thanks" is harmless, a skipped search on a real question is not.
+ */
+async function isSmallTalk(text: string): Promise<boolean> {
+    // Long messages are never small talk; skip the model call.
+    if (!text || text.length > 200) return false;
+
+    try {
+        const { output } = await generateText({
+            model: openrouter(PIPELINE_MODEL),
+            system: SMALL_TALK_SYSTEM,
+            temperature: 0,
+            messages: [
+                {
+                    role: "user",
+                    content: `Message: "${text}"`,
+                },
+            ],
+            output: Output.object({
+                schema: z.object({
+                    smallTalk: z
+                        .boolean()
+                        .describe("True only if the message is pure small talk (greeting, thanks, goodbye, acknowledgement, or a meta question about the assistant)."),
+                }),
+            }),
+        });
+
+        return output.smallTalk;
+    } catch (err) {
+        console.warn("[isSmallTalk] Classification failed, forcing retrieval:", err);
+        return false;
+    }
+}
+
+/** Plain text of the last user message, used to decide whether to force retrieval. */
+function lastUserText(messages: ChatUIMessage[]): string {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    return lastUser?.parts
+        ?.map((p) => (p.type === "text" ? p.text : ""))
+        .join(" ")
+        .trim() ?? "";
+}
+
 /**
  * Cheap, synchronous title derived from the first user message. Used as the
  * session's initial title so the sidebar shows a meaningful name immediately,
@@ -199,6 +254,13 @@ export async function POST(req: Request) {
             return new Response("Missing or invalid message", { status: 400 });
         }
 
+        // Kick off the small-talk classification immediately so it runs
+        // concurrently with session persistence below; prepareStep awaits it.
+        // Retrieval must happen for every real question — the model cannot be
+        // trusted to call the tool itself once earlier tool results are in
+        // the conversation history. Only pure small talk (hi/thanks) skips it.
+        const smallTalkPromise = isSmallTalk(lastUserText(incomingMessages));
+
         const isNewSession = !sessionId || sessionId === "new";
         let activeSessionId: string;
         let activeMessages: ChatUIMessage[];
@@ -264,10 +326,13 @@ export async function POST(req: Request) {
             // searching and write the final answer in the next step. This
             // prevents weaker models from looping on repeated tool calls and
             // ending the turn with no user-visible text.
-            prepareStep: ({ steps }) => {
+            prepareStep: async ({ steps }) => {
                 const hasSearched = steps.some((step) => step.toolCalls.length > 0);
                 if (hasSearched) {
                     return { toolChoice: "none" };
+                }
+                if (!(await smallTalkPromise)) {
+                    return { toolChoice: { type: "tool", toolName: "searchDocumentation" } };
                 }
                 return {};
             },
